@@ -458,7 +458,43 @@ const WeatherApp = memo(() => {
     const selectSuggestion = async (suggestion) => {
         setSearchCity(suggestion.displayName);
         setShowSuggestions(false);
-        await fetchWeatherData(suggestion.name);
+        
+        // Usa le coordinate per una ricerca più precisa
+        if (!isOnline) {
+            setError('Connessione internet non disponibile');
+            return;
+        }
+
+        startLoading('Caricamento dati meteo...');
+        setError('');
+
+        try {
+            updateProgress(20, 'Recupero dati meteo...');
+            
+            // Usa direttamente le coordinate dalla suggestion
+            const [currentData, forecastData, hourlyData] = await Promise.all([
+                weatherService.getCurrentWeatherByCoords(suggestion.lat, suggestion.lon),
+                weatherService.getForecastByCoords(suggestion.lat, suggestion.lon),
+                weatherService.getHourlyForecastByCoords(suggestion.lat, suggestion.lon)
+            ]);
+
+            updateProgress(80, 'Elaborazione dati...');
+
+            setCurrentWeather(currentData);
+            setCachedWeather(currentData);
+            setForecast(forecastData);
+            setHourlyForecast(hourlyData);
+            setShowFavorites(false);
+
+            updateProgress(100, 'Completato!');
+            finishLoading();
+            
+        } catch (error) {
+            console.error('Errore nel caricamento meteo:', error);
+            setError('Errore nel caricamento dei dati meteo. Riprova.');
+            finishLoading();
+        }
+        
         setSearchCity('');
     };
 
